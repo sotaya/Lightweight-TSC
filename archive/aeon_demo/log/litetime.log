@@ -1,0 +1,20 @@
+LITETime.py
+2025-06-27 20:02:40.094619: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2025-06-27 20:02:44.666115: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2025-06-27 20:02:52.872588: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: SSE3 SSE4.1 SSE4.2 AVX AVX2 AVX512F AVX512_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 173ms/step
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 184ms/step
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 178ms/step
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 182ms/step
+WARNING:tensorflow:5 out of the last 5 calls to <function TensorFlowTrainer.make_predict_function.<locals>.one_step_on_data_distributed at 0x0000013F1D89C400> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 187ms/step
+0.4642857142857143
+WARNING:tensorflow:6 out of the last 6 calls to <function TensorFlowTrainer.make_predict_function.<locals>.one_step_on_data_distributed at 0x0000013F2E4BC720> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 203ms/step
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 186ms/step
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 184ms/step
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 205ms/step
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 192ms/step
+0.4642857142857143
+

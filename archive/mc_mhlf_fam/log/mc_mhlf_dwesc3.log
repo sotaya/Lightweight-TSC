@@ -1,0 +1,30 @@
+データセット10種類の検証
+[times]
+real    725m48.354s
+user    815m13.679s
+sys     36m20.442s
+
+[output]
+                  dataset  best_accuracy  parameter_count
+0                   Adiac       0.867008            80477
+1               ArrowHead       0.897143            75003
+2                     CBF       0.986667            75003
+3                  Coffee       1.000000            74842
+4     DiatomSizeReduction       0.967320            75164
+5                  ECG200       0.930000            74842
+6                   FordA       0.927520            74842
+7               Gun_Point       0.993333            74842
+8         StarLightCurves       0.967946            75003
+9  UWaveGestureLibraryAll       0.889447            75808
+10	              average	    0.942638	        75583
+
+StarLightCurvesのみ検証
+[times]
+real    1029m43.884s
+user    7755m56.343s
+sys     550m35.595s
+
+[output]
+           dataset  best_accuracy  parameter_count
+0  StarLightCurves       0.966003            75003
+
