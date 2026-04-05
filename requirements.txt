@@ -6,3 +6,4 @@ tensorflow
 aeon
 scikit-learn
 scipy
+Multi_Comparison_Matrix
