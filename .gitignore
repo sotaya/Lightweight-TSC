@@ -4,11 +4,12 @@
 # 仮想環境
 .venv/
 
-# 書類生成
-edit/
+# 書類生成（論文執筆物。pdf/fig等の一部ファイルは明示的に追跡）
+papers/
 
 # データセット
-UCR_TS_Archive_2015/
+data/*
+!data/README.md
 
 ログ・モデルファイル
 training.log
@@ -16,3 +17,7 @@ model.h5
 best_params.json
 model.pkl
 output.log
+
+# Pythonキャッシュ
+__pycache__/
+*.pyc
