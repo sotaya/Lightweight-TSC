@@ -3,20 +3,28 @@
 研究で進めるべきタスクを管理するファイル。完了したら `[x]` にする。
 内容は随時更新してください（特に「研究内容のタスク」は現時点で把握できている範囲の推測を含むため、実態に合わせて書き換えてください）。
 
-## 整理・環境面のタスク（今回判明したもの）
+## 研究内容のタスク（2026-11-04 時点、`wip/runs/` の実測値で確認済み）
 
-- [ ] 今回のディレクトリ再構成（`experiment→experiments`等）をコミットする
-- [ ] `experiments/masters/` の実験を開始する、または不要なら削除する
-- [ ] `wip/` 内の検証（reservoir, mc-mhef, mc-mhelite, s_pmc_mhlite, s_pmc2_mhlite等）のうち、
-      論文として固まったものを `experiments/<venue>/` に切り出す
-- [ ] `.claude/hooks/guard_results_bash.sh` の保護パターンを、新しい命名の結果ファイルが
-      出てきた際にアップデートする
+### タスク①: PMC/PMC2-MHLITEの軽量化（Siamese, `wip/runs/pmc_fam_LW/`）— 直近の優先タスク
 
-## 研究内容のタスク（推測ベース・要確認）
+- [x] 完全共有Siamese版（`s_pmc_mhlite.py`/`s_pmc2_mhlite.py`：長期/短期のLITE分岐をGAP層まで丸ごと共有）を実装・7データセットで検証
+      → 平均正解率0.79/0.80止まりで不採用。Adiac（37クラス）が0.34/0.26まで崩壊。
+- [ ] 未実装の中間案「枝ごとに独立フィルタを保ち、GAP層後段のみ共有」を実装・検証する
+- [ ] 代替として知識蒸留（MC-MHLF→LITE）方向への転換も検討する
 
-- [ ] IEEE SMC Hiroshima 2026（`papers/ieee_smc2026/`）の論文ドラフトの続き
-- [ ] IIAI AAI 2026（`experiments/iiai_aai2026/`）の実行時間比較結果のまとめ・論文化
-- [ ] 学部の実験（`experiments/undergraduate/`）の追加検証（MC-L-LITE / MC-S-LITE）の評価
+### タスク②: ESNをMC-MHLFモデルのLSTMと入れ替えて軽量化（`wip/runs/reservoir-esn/`）
+
+- [x] ESN事前計算化（学習ループ外で1回だけ計算、`ESNPrecomputer`）は実装済み
+- [x] `mc-mhelite`を85データセット全体で検証済み → 平均正解率0.834・平均処理時間3,172s
+      （デモ時の0.906/1,791sは易しいデータセットのみの部分検証だったため、全体像とズレていた）
+- [ ] `mc_mhelite.py`にEarlyStoppingを導入する（現状39/85データセットが上限エポックに到達しており、
+      StarLightCurves等の極端な処理時間(最大11時間)の直接原因）
+- [ ] Phoneme(39クラス)等の多クラスデータでの精度低下を`reservoir_units`の調整で改善できるか検証する
+
+### 論文投稿先（IIAI AAI後のジャーナル）
+
+- [ ] IIAI AAIの査読期間が長く修士卒業までに結果が出ない懸念があるため、別の学会・論文誌を検討する
+      （2026-11-04時点ではまだ候補なし。既存ドラフト`papers/ieee_smc2026/j-draft-v7.tex`の転用可否も含めて検討）
 
 ## バックログ
 

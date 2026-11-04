@@ -10,6 +10,10 @@ papers/
 # データセット
 data/*
 !data/README.md
+!data/UCR_categories.md
+
+# 研究履歴メモ（個人作業用、追跡対象外）
+/RESEARCH_LOG.md
 
 ログ・モデルファイル
 training.log
