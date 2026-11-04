@@ -1,0 +1,8 @@
+dataset,sample_count,total_inference_time_seconds,time_per_sample_ms
+Adiac,391,0.155814,0.398500
+Beef,30,0.068060,2.268664
+CBF,900,0.218798,0.243109
+Computers,250,0.306395,1.225580
+ECG5000,4500,0.959442,0.213209
+Gun_Point,150,0.081123,0.540821
+wafer,6164,1.400281,0.227171

@@ -4,5 +4,15 @@
 # 仮想環境
 .venv/
 
+# 書類生成
+edit/
+
 # データセット
 UCR_TS_Archive_2015/
+
+ログ・モデルファイル
+training.log
+model.h5
+best_params.json
+model.pkl
+output.log
