@@ -87,4 +87,4 @@ def create_wilcoxon_plot(csv_file, output_file):
     print(f"p値: {p_value}")
 
 # 実行
-create_wilcoxon_plot('overall_acc_results.csv', 'wilcoxon_plot.png')
+create_wilcoxon_plot('experiment/ieee_smc2026/performance/overall_macd/models_pf.csv', 'wilcoxon_plot.png')

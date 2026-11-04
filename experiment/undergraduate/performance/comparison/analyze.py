@@ -3,6 +3,7 @@ import pathlib
 import re
 import sys
 import os
+import math
 
 # TensorFlow の不要なログ（INFOやWARNING）を抑制する
 # '1' = INFOを抑制, '2' = WARNINGも抑制, '3' = ERRORも抑制
@@ -15,6 +16,35 @@ except ImportError:
     print("エラー: TensorFlow がインストールされていません。")
     print("このスクリプトを実行するには 'pip install tensorflow' が必要です。")
     sys.exit(1)
+
+
+def count_hdf5_model_parameters(model_path):
+    """Count saved layer-weight values without deserializing the model."""
+    try:
+        import h5py
+    except ImportError as exc:
+        raise RuntimeError("HDF5読み込み用の h5py がありません。") from exc
+
+    with h5py.File(model_path, "r") as model_file:
+        model_weights = model_file.get("model_weights")
+        if model_weights is None:
+            raise ValueError("HDF5ファイルに model_weights グループがありません。")
+
+        parameter_count = 0
+        found_weights = False
+
+        def add_weight_values(_, item):
+            nonlocal parameter_count, found_weights
+            if isinstance(item, h5py.Dataset):
+                parameter_count += math.prod(item.shape)
+                found_weights = True
+
+        model_weights.visititems(add_weight_values)
+        if not found_weights:
+            raise ValueError("model_weights グループに重みデータがありません。")
+
+    return parameter_count
+
 
 def analyze_results():
     """
@@ -114,7 +144,7 @@ def analyze_results():
     ]
     
     # 2. 結果が保存されているベースパス
-    base_output_path = pathlib.Path("pmcloutput")
+    base_output_path = pathlib.Path("progress/valid/s_pmc_mhlite/pmc2loutput_v2")
     
     # 最終的な結果を格納するリスト
     results = []
@@ -172,8 +202,13 @@ def analyze_results():
                 
         except Exception as e:
             print(f"  エラー: {model_path.name} の読み込み中に失敗しました: {e}")
-            print("         (もし 'myCSVlogger' が見つからない等のエラーなら無視して構いません)")
-            keras.backend.clear_session() # エラー時もセッションをクリア
+            try:
+                param_count = count_hdf5_model_parameters(model_path)
+                print(f"  HDF5内の保存済み重みからパラメータ数を取得: {param_count}")
+            except Exception as h5_error:
+                print(f"  HDF5重みからの集計にも失敗しました: {h5_error}")
+            finally:
+                keras.backend.clear_session() # エラー時もセッションをクリア
 
         # 3. 結果の保存
         results.append({

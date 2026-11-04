@@ -196,6 +196,11 @@ if __name__ == "__main__":
         f.write("dataset,time_seconds\n")
     print(f"Time log file initialized at {output_time_path}")
 
+    output_results_path = pathlib.Path(basepath, "results.csv")
+    with open(output_results_path, "w") as f:
+        f.write("dataset,params,train_loss,train_acc,test_loss,test_acc\n")
+    print(f"Results log file initialized at {output_results_path}")
+
     # 処理時間を記録するリストを初期化
     time_logs = []
 
@@ -243,6 +248,20 @@ if __name__ == "__main__":
 
         with open(output_time_path, "a") as f:
             f.write(f"{fname.name},{elapsed_time}\n")
-    
+
+        # --- 結果サマリーの記録を追加 ---
+        # 最終エポックのメトリクスを取得
+        train_loss = history.history['loss'][-1]
+        train_acc = history.history['accuracy'][-1]
+        test_loss = history.history['val_loss'][-1]
+        test_acc = history.history['val_acc'][-1]
+
+        # パラメータ数を取得
+        total_params = model.count_params()
+
+        # results.csvに追記
+        with open(output_results_path, "a") as f:
+            f.write(f"{fname.name},{total_params},{train_loss},{train_acc},{test_loss},{test_acc}\n")
+
         # メモリリークを防ぐためにセッションをクリア（推奨）
         keras.backend.clear_session()

@@ -7,3 +7,5 @@ aeon
 scikit-learn
 scipy
 Multi_Comparison_Matrix
+reservoirpy
+optuna
