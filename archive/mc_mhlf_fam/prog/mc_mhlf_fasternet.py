@@ -1,30 +1,18 @@
 # coding:utf-8
 
-import pathlib, sys
-
+import pathlib, os
 import numpy as np
-import pandas as pd
-
 import tensorflow
-
-from tensorflow import keras 
-
-from tensorflow.keras import backend as K 
-from tensorflow.keras.layers import Conv1D, BatchNormalization, GlobalAveragePooling1D, Permute, Dropout, Flatten, Layer
-from tensorflow.keras.layers import Input, Dense, LSTM,concatenate, Activation, GRU, SimpleRNN, Add
+from tensorflow import keras  
+from tensorflow.keras.layers import Conv1D, BatchNormalization, GlobalAveragePooling1D, Dropout, Layer
+from tensorflow.keras.layers import Input, Dense, LSTM,concatenate, Activation, Add
 from tensorflow.keras.models import Model
-from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint
-
+from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.utils import to_categorical
 
-import time, os
-
-os.environ['KMP_DUPLICATE_LIB_OK']="True"###
+os.environ['KMP_DUPLICATE_LIB_OK']="True"
 
 class PartialConv1D(Layer):
-    """
-    FasterNetのPConvを1次元データ向けに実装したカスタムレイヤー
-    """
     def __init__(self, kernel_size, n_div=4, **kwargs):
         super(PartialConv1D, self).__init__(**kwargs)
         self.n_div = n_div
@@ -35,17 +23,13 @@ class PartialConv1D(Layer):
         self.dim_conv = channels // self.n_div
         self.dim_untouched = channels - self.dim_conv
         
-        # PConv用のConv1Dレイヤー
         self.partial_conv = Conv1D(self.dim_conv, self.kernel_size, padding='same', bias_initializer='zeros')
 
         super(PartialConv1D, self).build(input_shape)
 
     def call(self, x):
-        # チャンネル次元で分割
         x1, x2 = tensorflow.split(x, [self.dim_conv, self.dim_untouched], axis=-1)
-        # 片方だけに畳み込みを適用
         x1 = self.partial_conv(x1)
-        # 再度結合
         out = concatenate([x1, x2], axis=-1)
         return out
         
@@ -59,29 +43,21 @@ class PartialConv1D(Layer):
 
 
 def FasterNetBlock(input_tensor, mlp_ratio=2.0, drop_path=0.0):
-    """
-    FasterNetの基本ブロック
-    """
     ch_in = input_tensor.shape[-1]
     mlp_hidden_dim = int(ch_in * mlp_ratio)
-    
-    # Spatial Mixing (PConv)
+
     x = PartialConv1D(kernel_size=3)(input_tensor)
-    
-    # Shortcut connection
+
     shortcut = input_tensor
     
-    # Channel Mixing (MLP)
     x = Conv1D(filters=mlp_hidden_dim, kernel_size=1, padding='same')(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = Conv1D(filters=ch_in, kernel_size=1, padding='same')(x)
     
-    # Dropout (Stochastic Depth) - 簡単のため通常のDropoutで代用
     if drop_path > 0.:
         x = Dropout(drop_path)(x)
-        
-    # Residual connection
+    
     x = Add()([shortcut, x])
     
     return x
@@ -129,13 +105,10 @@ def generate_mcmhlf(MAX_SEQUENCE_LENGTH, NB_CLASS):
     x = LSTM(32)(ip)
     x = Dropout(0.8)(x)
 
-    # --- FCNブランチをFasterNetBlockに置き換え ---
-    # 最初のConv1Dでチャンネル数を調整
     y = Conv1D(128, 8, padding='same', kernel_initializer='he_uniform')(ip)
     y = BatchNormalization()(y)
     y = Activation('relu')(y)
     
-    # FasterNetブロックを2回適用
     y = FasterNetBlock(y, mlp_ratio=2.0)
     y = FasterNetBlock(y, mlp_ratio=2.0)
 
@@ -149,8 +122,6 @@ def generate_mcmhlf(MAX_SEQUENCE_LENGTH, NB_CLASS):
     model = Model(ip, out)
 
     model.summary()
-
-    # add load model code here to fine-tune
 
     model.compile(optimizer='adam',
                   loss='categorical_crossentropy',
@@ -261,11 +232,8 @@ class myCSVlogger(keras.callbacks.Callback):
 
     def on_epoch_end(self, batch, logs):
         self.logs["loss"].append(logs.get('loss'))
-#         self.logs["acc"].append(logs.get('acc'))
         self.logs["acc"].append(logs.get('accuracy'))
         
-        # MODIFIED: Changed the batch_size to a fixed value (e.g., 128) 
-        # to prevent GPU Out-of-Memory errors with large test sets.
         scores = self.model.evaluate(self.x_test, self.y_test, batch_size=128, verbose=0)
         
         self.logs["val_loss"].append(scores[0])
@@ -285,17 +253,12 @@ if __name__ == "__main__":
     # reading dataset's name
     flist = list(pathlib.Path("UCR_TS_Archive_2015").iterdir()) 
 
-    flist.sort()   #データセット辞書順並べ替え
+    flist.sort()
 
     for fname in flist:
-        #load data
-#         basepath = pathlib.Path("./")
         basepath = pathlib.Path("")
         x_train, y_train, hist_s_train, hist_l_train, n_classes, md_s_train, md_l_train = load_data( pathlib.Path(basepath, "UCR_TS_Archive_2015", fname.name), fname.name, "_TRAIN")
         x_test, y_test, hist_s_test, hist_l_test, _, md_s_test, md_l_test= load_data( pathlib.Path(basepath, "UCR_TS_Archive_2015", fname.name), fname.name, "_TEST", n_classes)
-            
-        #input_train = np.dstack([x_train, hist_s_train, hist_l_train, md_s_train, md_l_train])
-        #input_test = np.dstack([x_test, hist_s_test, hist_l_test, md_s_test, md_l_test])
 
         input_train = np.dstack([x_train, hist_s_train, hist_l_train])
         input_test = np.dstack([x_test, hist_s_test, hist_l_test])

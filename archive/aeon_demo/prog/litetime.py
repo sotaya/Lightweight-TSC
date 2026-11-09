@@ -1,5 +1,6 @@
 from aeon.datasets import load_classification
 from aeon.classification.deep_learning import LITETimeClassifier
+
 xtrain, ytrain, _ = load_classification(name="Coffee", split="train", return_metadata=True)
 xtest, ytest, _ = load_classification(name="Coffee", split="test", return_metadata=True)
 # using LITETime

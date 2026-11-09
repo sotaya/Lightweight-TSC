@@ -1,5 +1,6 @@
 # coding:utf-8
-import pathlib
+
+import pathlib, os
 import numpy as np
 import tensorflow
 from tensorflow import keras 
@@ -7,7 +8,6 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.utils import to_categorical
 from aeon.networks._lite import LITENetwork
-import os
 
 os.environ['KMP_DUPLICATE_LIB_OK']="True"
 
@@ -156,8 +156,6 @@ class myCSVlogger(keras.callbacks.Callback):
         self.logs["loss"].append(logs.get('loss'))
         self.logs["acc"].append(logs.get('accuracy'))
         
-        # MODIFIED: Changed the batch_size to a fixed value (e.g., 128) 
-        # to prevent GPU Out-of-Memory errors with large test sets.
         scores = self.model.evaluate(self.x_test, self.y_test, batch_size=128, verbose=0)
         self.logs["val_loss"].append(scores[0])
         self.logs["val_acc"].append(scores[1])
@@ -175,7 +173,7 @@ class myCSVlogger(keras.callbacks.Callback):
 if __name__ == "__main__":
     # reading dataset's name
     flist = list(pathlib.Path("UCR_TS_Archive_2015").iterdir()) 
-    flist.sort()   #データセット辞書順並べ替え
+    flist.sort()
 
     for fname in flist:
         if fname.name not in batch_size_dic:

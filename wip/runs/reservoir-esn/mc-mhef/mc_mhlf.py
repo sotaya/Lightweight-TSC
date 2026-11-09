@@ -1,17 +1,16 @@
 # coding:utf-8
 
 import pathlib
+import time, os
 import numpy as np
-import pandas as pd
 from tensorflow import keras 
 from tensorflow.keras.layers import Conv1D, BatchNormalization, GlobalAveragePooling1D, Dropout
 from tensorflow.keras.layers import Input, Dense, LSTM,concatenate, Activation
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.utils import to_categorical
-import time, os
 
-os.environ['KMP_DUPLICATE_LIB_OK']="True"###
+os.environ['KMP_DUPLICATE_LIB_OK']="True"
 
 def normalization(data):
     ans = []
@@ -78,8 +77,6 @@ def generate_mcmhlf(MAX_SEQUENCE_LENGTH, NB_CLASS):
     model = Model(ip, out)
 
     model.summary()
-
-    # add load model code here to fine-tune
 
     model.compile(optimizer='adam',
                   loss='categorical_crossentropy',
@@ -190,11 +187,8 @@ class myCSVlogger(keras.callbacks.Callback):
 
     def on_epoch_end(self, batch, logs):
         self.logs["loss"].append(logs.get('loss'))
-#         self.logs["acc"].append(logs.get('acc'))
         self.logs["acc"].append(logs.get('accuracy'))
         
-        # MODIFIED: Changed the batch_size to a fixed value (e.g., 128) 
-        # to prevent GPU Out-of-Memory errors with large test sets.
         scores = self.model.evaluate(self.x_test, self.y_test, batch_size=128, verbose=0)
         
         self.logs["val_loss"].append(scores[0])
@@ -213,7 +207,7 @@ class myCSVlogger(keras.callbacks.Callback):
 if __name__ == "__main__":
     # reading dataset's name
     flist = list(pathlib.Path("UCR_TS_Archive_2015").iterdir()) 
-    flist.sort()   # データセット辞書順並べ替え
+    flist.sort()
 
     basepath = pathlib.Path("mcoutput")
     if not basepath.exists():
@@ -224,7 +218,6 @@ if __name__ == "__main__":
         f.write("dataset,time_seconds\n")
     print(f"Time log file initialized at {output_time_path}")
 
-    # 処理時間を記録するリストを初期化
     time_logs = []
 
     for fname in flist:
@@ -232,7 +225,7 @@ if __name__ == "__main__":
             continue
         
         print(f"--- Processing: {fname.name} ---")
-        # 計測開始
+
         start_time = time.time()
 
         # load data
@@ -263,7 +256,6 @@ if __name__ == "__main__":
                                 epochs=2000, batch_size=batch_size_dic[fname.name],
                                 callbacks=[logger, checker])
         
-        # 計測終了・時間計算
         end_time = time.time()
         elapsed_time = end_time - start_time
         
@@ -272,5 +264,4 @@ if __name__ == "__main__":
         with open(output_time_path, "a") as f:
             f.write(f"{fname.name},{elapsed_time}\n")
 
-        # メモリリークを防ぐためにセッションをクリア（推奨）
         keras.backend.clear_session()

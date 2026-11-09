@@ -1,25 +1,15 @@
 # coding:utf-8
 
-import pathlib, sys
-
+import pathlib, os
 import numpy as np
-import pandas as pd
-
-import tensorflow
-
 from tensorflow import keras 
-
-from tensorflow.keras import backend as K  
-from tensorflow.keras.layers import Conv1D, SeparableConv1D, BatchNormalization, GlobalAveragePooling1D, Permute, Dropout, Flatten
-from tensorflow.keras.layers import Input, Dense, LSTM,concatenate, Activation, GRU, SimpleRNN
+from tensorflow.keras.layers import Conv1D, SeparableConv1D, BatchNormalization, GlobalAveragePooling1D, Dropout
+from tensorflow.keras.layers import Input, Dense, LSTM,concatenate, Activation
 from tensorflow.keras.models import Model
-from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint
-
+from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.utils import to_categorical
 
-import time, os
-
-os.environ['KMP_DUPLICATE_LIB_OK']="True"###
+os.environ['KMP_DUPLICATE_LIB_OK']="True"
 
 def normalization(data):
     ans = []
@@ -198,11 +188,8 @@ class myCSVlogger(keras.callbacks.Callback):
 
     def on_epoch_end(self, batch, logs):
         self.logs["loss"].append(logs.get('loss'))
-#         self.logs["acc"].append(logs.get('acc'))
         self.logs["acc"].append(logs.get('accuracy'))
         
-        # MODIFIED: Changed the batch_size to a fixed value (e.g., 128) 
-        # to prevent GPU Out-of-Memory errors with large test sets.
         scores = self.model.evaluate(self.x_test, self.y_test, batch_size=128, verbose=0)
         
         self.logs["val_loss"].append(scores[0])
@@ -219,20 +206,14 @@ class myCSVlogger(keras.callbacks.Callback):
                 f.write(str(self.logs["val_acc"][i])+",\n")
 
 if __name__ == "__main__":
-    # reading dataset's name
     flist = list(pathlib.Path("UCR_TS_Archive_2015").iterdir()) 
 
-    flist.sort()   #データセット辞書順並べ替え
+    flist.sort()
 
     for fname in flist:
-        #load data
-#         basepath = pathlib.Path("./")
         basepath = pathlib.Path("")
         x_train, y_train, hist_s_train, hist_l_train, n_classes, md_s_train, md_l_train = load_data( pathlib.Path(basepath, "UCR_TS_Archive_2015", fname.name), fname.name, "_TRAIN")
         x_test, y_test, hist_s_test, hist_l_test, _, md_s_test, md_l_test= load_data( pathlib.Path(basepath, "UCR_TS_Archive_2015", fname.name), fname.name, "_TEST", n_classes)
-            
-        #input_train = np.dstack([x_train, hist_s_train, hist_l_train, md_s_train, md_l_train])
-        #input_test = np.dstack([x_test, hist_s_test, hist_l_test, md_s_test, md_l_test])
 
         input_train = np.dstack([x_train, hist_s_train, hist_l_train])
         input_test = np.dstack([x_test, hist_s_test, hist_l_test])

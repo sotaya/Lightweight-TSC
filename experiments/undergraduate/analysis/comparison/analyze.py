@@ -1,25 +1,13 @@
 import pandas as pd
 import pathlib
-import re
-import sys
-import os
+import sys, os
 import math
+import tensorflow as tf
+from tensorflow import keras
 
-# TensorFlow の不要なログ（INFOやWARNING）を抑制する
-# '1' = INFOを抑制, '2' = WARNINGも抑制, '3' = ERRORも抑制
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 
-try:
-    import tensorflow as tf
-    from tensorflow import keras
-except ImportError:
-    print("エラー: TensorFlow がインストールされていません。")
-    print("このスクリプトを実行するには 'pip install tensorflow' が必要です。")
-    sys.exit(1)
-
-
 def count_hdf5_model_parameters(model_path):
-    """Count saved layer-weight values without deserializing the model."""
     try:
         import h5py
     except ImportError as exc:
@@ -47,13 +35,6 @@ def count_hdf5_model_parameters(model_path):
 
 
 def analyze_results():
-    """
-    10個のデータセットの実行結果（精度とパラメータ数）を集計し、
-    analysis_summary.csv に保存します。
-    
-    変更点：ログファイルの代わりに 'model.h5' を直接読み込んでパラメータ数をカウントします。
-    """
-    
     # 1. 分析対象のデータセット
     dataset_dirs = [
     "50words",
@@ -143,10 +124,9 @@ def analyze_results():
     "yoga"
     ]
     
-    # 2. 結果が保存されているベースパス
+    # 2. 結果が保存されているパス
     base_output_path = pathlib.Path("progress/valid/s_pmc_mhlite/pmc2loutput_v2")
     
-    # 最終的な結果を格納するリスト
     results = []
     
     print(f"--- 分析を開始します ---")
@@ -166,8 +146,6 @@ def analyze_results():
         try:
             if log_path.exists():
                 log_df = pd.read_csv(log_path)
-                
-                # 'val_acc' または 'val_accuracy' 列を探す
                 if 'val_acc' in log_df.columns:
                     best_acc = log_df['val_acc'].max()
                 elif 'val_accuracy' in log_df.columns:
@@ -186,15 +164,9 @@ def analyze_results():
         model_path = base_output_path / dataset_name / "model.h5"
         try:
             if model_path.exists():
-                # モデルを読み込む
-                # compile=False にすると、オプティマイザの状態などを読み込まないため高速
                 model = keras.models.load_model(str(model_path), compile=False) 
-                
-                # 総パラメータ数をカウント
                 param_count = model.count_params()
                 print(f"  {model_path.name} を読み込み成功。パラメータ数: {param_count}")
-                
-                # メモリを解放（ループ内で多数のモデルを読み込むため重要）
                 keras.backend.clear_session()
                 del model
             else:
@@ -208,7 +180,7 @@ def analyze_results():
             except Exception as h5_error:
                 print(f"  HDF5重みからの集計にも失敗しました: {h5_error}")
             finally:
-                keras.backend.clear_session() # エラー時もセッションをクリア
+                keras.backend.clear_session()
 
         # 3. 結果の保存
         results.append({
@@ -221,7 +193,6 @@ def analyze_results():
     output_csv = "analysis_summary.csv"
     try:
         results_df = pd.DataFrame(results)
-        
         columns_order = ["dataset", "best_accuracy", "parameter_count"]
         results_df = results_df[columns_order]
         
@@ -230,8 +201,6 @@ def analyze_results():
         
         print(f"\n--- 完了 ---")
         print(f"分析結果が '{output_csv}' に保存されました。")
-        
-        # 結果のプレビューを表示
         print("\n[分析結果の概要]")
         print(results_df.to_string())
         
