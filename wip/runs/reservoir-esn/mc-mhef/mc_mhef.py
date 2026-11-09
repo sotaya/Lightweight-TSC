@@ -1,30 +1,19 @@
 # coding:utf-8
+
 import argparse
 import os
 import pathlib
 import time
-
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import Model
-from tensorflow.keras.callbacks import ModelCheckpoint
-from tensorflow.keras.layers import (
-    Activation,
-    BatchNormalization,
-    Concatenate,
-    Conv1D,
-    Dense,
-    GlobalAveragePooling1D,
-    Input,
-)
 from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.layers import Activation, BatchNormalization, Concatenate, Conv1D, Dense, GlobalAveragePooling1D, Input
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
 
-# ---------------------------------------------------------------------------
-# グローバル設定・ハイパーパラメータ
-# ---------------------------------------------------------------------------
 SEED = 42
 EPOCHS = 2000
 RESERVOIR_UNITS = 64
@@ -42,10 +31,6 @@ BATCH_SIZE_DIC = {
     "ECG200": 32, "Gun_Point": 8, "wafer": 8
 }
 
-
-# ---------------------------------------------------------------------------
-# データの前処理とローダー
-# ---------------------------------------------------------------------------
 def normalization(data):
     ans = []
     if data is None or not hasattr(data, "__len__") or len(data) == 0:
@@ -93,10 +78,6 @@ def load_data(path, dataset_name, sel_mode, n_classes=0):
 
     return x, y, hist_s, hist_l, n_classes, md_s, md_l
 
-
-# ---------------------------------------------------------------------------
-# 第一部：ESN事前計算モジュール（高速化・最適化版）
-# ---------------------------------------------------------------------------
 class ESNPrecomputer:
     def __init__(self, input_dim, units=RESERVOIR_UNITS, spectral_radius=SPECTRAL_RADIUS,
                  leaking_rate=LEAKING_RATE, input_scaling=INPUT_SCALING, seed=SEED):
@@ -115,16 +96,9 @@ class ESNPrecomputer:
         self.bias = np.zeros(units)
 
     def transform(self, x_seq):
-        """
-        x_seq shape: (num_samples, timesteps, input_dim)
-        Returns shape: (num_samples, units)
-        入力射影項を事前に一括計算し、ループ内のオーバーヘッドを大幅に削減
-        """
         num_samples, timesteps, _ = x_seq.shape
         states = np.zeros((num_samples, self.units), dtype=np.float32)
 
-        # 全サンプルの入力射影項を一括で事前計算 (num_samples, timesteps, units)
-        # np.dot(x_seq, self.w_in) は (num_samples, timesteps, units) を一瞬で生成
         input_projections = np.dot(x_seq, self.w_in) * self.input_scaling + self.bias
 
         for i in range(num_samples):
@@ -141,10 +115,6 @@ class ESNPrecomputer:
             
         return states
 
-
-# ---------------------------------------------------------------------------
-# 第二部：マルチインプットモデル構築 (MC-MHLFの構造を踏襲)
-# ---------------------------------------------------------------------------
 def generate_multi_input_mcmhef(max_sequence_length, nb_class, reservoir_units=RESERVOIR_UNITS):
     ip_esn = Input(shape=(reservoir_units,), name="esn_input")
     ip_fcn = Input(shape=(max_sequence_length, 3), name="fcn_input")
@@ -179,10 +149,6 @@ def generate_multi_input_mcmhef(max_sequence_length, nb_class, reservoir_units=R
 
     return model
 
-
-# ---------------------------------------------------------------------------
-# 個別ログ出力用カスタムロガー（MC-MHLFと完全同一条件）
-# ---------------------------------------------------------------------------
 class MyCSVLogger(keras.callbacks.Callback):
     def __init__(self, output_path, x_test_esn, x_test_fcn, y_test):
         self.output_path = output_path
@@ -206,10 +172,6 @@ class MyCSVLogger(keras.callbacks.Callback):
             for i in range(len(self.logs["loss"])):
                 f.write(f"{i + 1},{self.logs['loss'][i]},{self.logs['acc'][i]},{self.logs['val_loss'][i]},{self.logs['val_acc'][i]},")
 
-
-# ---------------------------------------------------------------------------
-# 単一データセットの処理ループ
-# ---------------------------------------------------------------------------
 def run_single_dataset(dataset_name, data_root, output_root, reservoir_units):
     output_dir = pathlib.Path(output_root, dataset_name)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -224,13 +186,11 @@ def run_single_dataset(dataset_name, data_root, output_root, reservoir_units):
     fcn_train = np.dstack([x_train, hist_s_train, hist_l_train]).astype(np.float32)
     fcn_test = np.dstack([x_test, hist_s_test, hist_l_test]).astype(np.float32)
 
-    # --- 第一部：ESN特徴量の事前計算（高速化版） ---
     print(f"[{dataset_name}] Precomputing ESN states (optimized)...", flush=True)
     esn_precomputer = ESNPrecomputer(input_dim=fcn_train.shape[2], units=reservoir_units)
     esn_train = esn_precomputer.transform(fcn_train)
     esn_test = esn_precomputer.transform(fcn_test)
 
-    # --- 第二部：マルチインプットモデルの構築と学習 ---
     model = generate_multi_input_mcmhef(fcn_train.shape[1], n_classes, reservoir_units=reservoir_units)
 
     trainable_params = int(sum([np.prod(w.shape.as_list()) for w in model.trainable_weights]))
@@ -284,10 +244,6 @@ def _already_processed_datasets(results_log_path):
                     done.add(name)
     return done
 
-
-# ---------------------------------------------------------------------------
-# 全体ベンチマーク実行とレジューム機能
-# ---------------------------------------------------------------------------
 def run_benchmark(data_root=DATA_ROOT, output_root=OUTPUT_ROOT, resume=True):
     output_root = pathlib.Path(output_root)
     output_root.mkdir(parents=True, exist_ok=True)

@@ -1,18 +1,17 @@
 # coding:utf-8
+
 import time
 import pathlib
 import pickle
 import random
-
 import numpy as np
 import sklearn.metrics
-
 import reservoirpy as rpy
 from reservoirpy.nodes import Reservoir, Ridge
 
 SEED = 42
 rpy.set_seed(SEED)
-rpy.verbosity(0)  # 学習中の進捗ログを抑制
+rpy.verbosity(0)
 np.random.seed(SEED)
 random.seed(SEED)
 
@@ -22,32 +21,23 @@ LEAKING_RATE = 0.3
 INPUT_SCALING = 1.0
 RIDGE_COEF = 1e-6
 
-
-# ---------------------------------------------------------------------------
-# データ読み込み
-# ---------------------------------------------------------------------------
 def normalization(data):
-    """サンプルごとに (値 - 平均) / 標準偏差 で正規化する"""
     mean = data.mean(axis=1, keepdims=True)
     std = data.std(axis=1, keepdims=True)
     return (data - mean) / std
 
 
 def load_raw(path, dataset_name, sel_mode):
-    """1ファイル分の生データ (特徴量 x, ラベル y) を読み込む"""
     data_path = pathlib.Path(path, dataset_name + sel_mode)
     data = np.loadtxt(data_path, delimiter=",")
     x = normalization(data[:, 1:])
     y = data[:, 0]
     return x, y
 
-
 def one_hot(indices, n_classes):
     return np.eye(n_classes)[indices.astype(int)]
 
-
 def load_dataset(path, dataset_name):
-    
     x_train, y_train_raw = load_raw(path, dataset_name, "_TRAIN")
     x_test, y_test_raw = load_raw(path, dataset_name, "_TEST")
 
@@ -56,7 +46,6 @@ def load_dataset(path, dataset_name):
     label_to_index = {label: i for i, label in enumerate(classes)}
 
     y_train_idx = np.array([label_to_index[v] for v in y_train_raw])
-    # test に train 未出現のクラスがあれば、そのサンプルは学習不可能なので除外する
     known_mask = np.array([v in label_to_index for v in y_test_raw])
     if not known_mask.all():
         n_dropped = (~known_mask).sum()
@@ -72,10 +61,6 @@ def load_dataset(path, dataset_name):
 
     return x_train, y_train, x_test, y_test, n_classes
 
-
-# ---------------------------------------------------------------------------
-# モデル
-# ---------------------------------------------------------------------------
 def generate_model():
     reservoir = Reservoir(
         RESERVOIR_UNITS,
@@ -87,32 +72,18 @@ def generate_model():
     readout = Ridge(ridge=RIDGE_COEF)
     return reservoir, readout
 
-
 def run_reservoir(reservoir, x):
-    """
-    x 内の全サンプルを reservoir に流し、各サンプルの状態の時間平均を返す。
-    Input shape:  (n_samples, timesteps, 1)
-    Output shape: (n_samples, RESERVOIR_UNITS)
-
-    reservoirpy の run() はサンプルのリストを渡すと、各系列を同じ初期状態から
-    実行したうえで内部的に並列化 (workers) してくれるため、Python 側で
-    1 サンプルずつ for ループを回して手動リセットする必要はない。
-    """
     states = reservoir.run(list(x), reset=True, workers=-1)
     return np.array([s.mean(axis=0) for s in states])
-
 
 def accuracy(y_pred, y_true):
     return sklearn.metrics.accuracy_score(
         np.argmax(y_true, axis=1), np.argmax(y_pred, axis=1)
     )
 
-
 def mse_loss(y_pred, y_true):
     return sklearn.metrics.mean_squared_error(y_true, y_pred)
 
-
-# 処理対象のデータセット名
 TARGET_DATASETS = {
     "50words", "Adiac", "ArrowHead", "Beef", "BeetleFly", "BirdChicken", "Car",
     "CBF", "ChlorineConcentration", "CinC_ECG_torso", "Coffee", "Computers",
@@ -149,22 +120,17 @@ def process_dataset(dataset_name, data_root, output_root):
     dataset_output_dir = pathlib.Path(output_root, dataset_name)
     dataset_output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 貯水池に系列を流して特徴量(状態)を取り出す
     train_states = run_reservoir(reservoir, x_train)
     test_states = run_reservoir(reservoir, x_test)
 
-    # fitting（Ridge回帰による読み出し層の学習）
     readout = readout.fit(train_states, y_train)
 
-    # モデルの保存
     with open(dataset_output_dir / "model.pkl", "wb") as f:
         pickle.dump({"reservoir": reservoir, "readout": readout}, f)
 
-    # 評価
     y_train_pred = readout.run(train_states)
     y_test_pred = readout.run(test_states)
 
-    # パラメータ数の計算 (学習対象=読み出し層のみをカウント。reservoir はランダム固定で学習しない)
     total_params = readout.Wout.size
     if readout.fit_bias:
         total_params += readout.bias.size
@@ -205,7 +171,6 @@ def main():
         try:
             result = process_dataset(dataset_name, data_root, output_root)
         except Exception as e:
-            # 1件失敗しても全体を止めず、次のデータセットへ進む
             print(f"  失敗: {dataset_name} をスキップします ({e})", flush=True)
             with open(results_log_path, "a") as f:
                 f.write(f"{dataset_name},ERROR,,,,\n")

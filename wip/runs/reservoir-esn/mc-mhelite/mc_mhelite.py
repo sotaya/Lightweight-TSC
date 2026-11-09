@@ -1,20 +1,15 @@
 # coding:utf-8
+
 import argparse
 import os
 import pathlib
 import time
-
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import Model
 from tensorflow.keras.callbacks import ModelCheckpoint
-from tensorflow.keras.layers import (
-    Activation,
-    Concatenate,
-    Dense,
-    Input,
-)
+from tensorflow.keras.layers import Activation, Concatenate, Dense, Input
 from tensorflow.keras.utils import to_categorical
 from aeon.networks import LITENetwork
 
@@ -23,9 +18,6 @@ os.environ['XLA_FLAGS'] = '--xla_gpu_strict_conv_algorithm_picker=false'
 os.environ['TF_CUDNN_USE_AUTOTUNE'] = '0'
 os.environ['TF_DETERMINISTIC_OPS'] = '1'
 
-# ---------------------------------------------------------------------------
-# グローバル設定・ハイパーパラメータ
-# ---------------------------------------------------------------------------
 SEED = 42
 EPOCHS = 2000
 RESERVOIR_UNITS = 64
@@ -42,10 +34,6 @@ BATCH_SIZE_DIC = {
     "NonInvasiveFatalECG_Thorax2": 32
 }
 
-
-# ---------------------------------------------------------------------------
-# データの前処理とローダー (MC-MHLITEに準拠)
-# ---------------------------------------------------------------------------
 def normalization(data):
     ans = []
     if data is None or not hasattr(data, "__len__") or len(data) == 0:
@@ -61,15 +49,12 @@ def normalization(data):
         ans.append((row - m) / s)
     return np.array(ans)
 
-
 def load_data(path, dataset_name, sel_mode, n_classes=0):
     data_path = pathlib.Path(path, dataset_name + sel_mode)
 
-    # ファイルをテキストとして読み込み、混入した不正な文字 ')' を除去する
     with open(data_path, 'r', encoding='utf-8', errors='ignore') as f:
         raw_text = f.read().replace(')', '')
-        
-    # 文字列バッファから数値配列として読み込む
+    
     import io
     data = np.genfromtxt(io.StringIO(raw_text), delimiter=',')
     x = normalization(data[:, 1:])
@@ -100,10 +85,6 @@ def load_data(path, dataset_name, sel_mode, n_classes=0):
 
     return x, y, hist_s, hist_l, n_classes, md_s, md_l
 
-
-# ---------------------------------------------------------------------------
-# 第一部：ESN事前計算モジュール（高速化・ベクトル化版）
-# ---------------------------------------------------------------------------
 class ESNPrecomputer:
     def __init__(self, input_dim, units=RESERVOIR_UNITS, spectral_radius=SPECTRAL_RADIUS,
                  leaking_rate=LEAKING_RATE, input_scaling=INPUT_SCALING, seed=SEED):
@@ -141,20 +122,14 @@ class ESNPrecomputer:
             
         return states
 
-
-# ---------------------------------------------------------------------------
-# 第二部：マルチインプットモデル構築 (ESN + LITEネットワーク)
-# ---------------------------------------------------------------------------
 def generate_mcmhef_lite(max_sequence_length, nb_class, reservoir_units=RESERVOIR_UNITS):
-    # 入力1: ESN特徴量
+
     ip_esn = Input(shape=(reservoir_units,), name="esn_input")
     x = Dense(32, activation='relu', kernel_initializer='he_uniform')(ip_esn)
 
-    # 入力2: LITEネットワーク (aeon LITE)
     lite = LITENetwork()
     ip_lite, gap_lite = lite.build_network(input_shape=(max_sequence_length, 3))
 
-    # 特徴量の結合
     combined = Concatenate()([x, gap_lite])
 
     out_x = Dense(nb_class, activation=None, kernel_initializer='he_uniform')(combined)
@@ -169,10 +144,6 @@ def generate_mcmhef_lite(max_sequence_length, nb_class, reservoir_units=RESERVOI
 
     return model
 
-
-# ---------------------------------------------------------------------------
-# 個別ログ出力用カスタムロガー
-# ---------------------------------------------------------------------------
 class MyCSVLogger(keras.callbacks.Callback):
     def __init__(self, output_path, x_test_esn, x_test_lite, y_test):
         self.output_path = output_path
@@ -196,10 +167,6 @@ class MyCSVLogger(keras.callbacks.Callback):
             for i in range(len(self.logs["loss"])):
                 f.write(f"{i + 1},{self.logs['loss'][i]},{self.logs['acc'][i]},{self.logs['val_loss'][i]},{self.logs['val_acc'][i]},\n")
 
-
-# ---------------------------------------------------------------------------
-# 単一データセットの処理ループ
-# ---------------------------------------------------------------------------
 def run_single_dataset(dataset_name, data_root, output_root, reservoir_units):
     output_dir = pathlib.Path(output_root, dataset_name)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -214,13 +181,11 @@ def run_single_dataset(dataset_name, data_root, output_root, reservoir_units):
     lite_train = np.dstack([x_train, hist_s_train, hist_l_train]).astype(np.float32)
     lite_test = np.dstack([x_test, hist_s_test, hist_l_test]).astype(np.float32)
 
-    # --- 第一部：ESN特徴量の事前計算 ---
     print(f"[{dataset_name}] Precomputing ESN states for LITE hybrid...", flush=True)
     esn_precomputer = ESNPrecomputer(input_dim=lite_train.shape[2], units=reservoir_units)
     esn_train = esn_precomputer.transform(lite_train)
     esn_test = esn_precomputer.transform(lite_test)
 
-    # --- 第二部：MC-MHEF-LITEモデルの構築と学習 ---
     model = generate_mcmhef_lite(lite_train.shape[1], n_classes, reservoir_units=reservoir_units)
 
     trainable_params = int(sum([np.prod(w.shape.as_list()) for w in model.trainable_weights]))
@@ -274,10 +239,6 @@ def _already_processed_datasets(results_log_path):
                     done.add(name)
     return done
 
-
-# ---------------------------------------------------------------------------
-# 全体ベンチマーク実行とレジューム機能
-# ---------------------------------------------------------------------------
 def run_benchmark(data_root=DATA_ROOT, output_root=OUTPUT_ROOT, resume=True):
     output_root = pathlib.Path(output_root)
     output_root.mkdir(parents=True, exist_ok=True)
